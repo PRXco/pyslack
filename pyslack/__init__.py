@@ -20,7 +20,7 @@ class SlackClient(object):
     def _channel_is_name(self, channel):
         return channel.startswith('#')
 
-    def _make_request(self, method, params):
+    def _make_request(self, method, params, files=None):
         """Make request to API endpoint
 
         Note: Ignoring SSL cert validation due to intermittent failures
@@ -33,7 +33,8 @@ class SlackClient(object):
 
         url = "%s/%s" % (SlackClient.BASE_URL, method)
         params['token'] = self.token
-        response = requests.post(url, data=params, verify=self.verify)
+        response = requests.post(url, data=params, verify=self.verify,
+                                 files=files)
 
         if response.status_code == 429:
             # Too many requests
@@ -107,6 +108,33 @@ class SlackClient(object):
             'ts': timestamp,
         })
         return self._make_request(method, params)
+
+    def file_upload(self, channels, filepath=None, content=None, **params):
+        """files.upload
+
+        This method uploads a file.
+
+        Required parameters:
+            `channels`: An array of the channels names to share the file
+            `filepath` or `content`: The file path or inner content to upload.
+
+        https://api.slack.com/methods/files.upload
+        """
+        method = 'files.upload'
+
+        assert filepath or content
+
+        params.update({
+            'channels': channels,
+        })
+
+        if filepath:
+            files = {'file': open(filepath, 'rb')}
+        else:
+            params['content'] = content
+            files = None
+
+        return self._make_request(method, params, files=files)
 
 
 class SlackHandler(logging.Handler):
